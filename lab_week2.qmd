@@ -1,0 +1,201 @@
+---
+title: "EDS 223: week 2"
+author: "Rachel Swick"
+format: html
+---
+
+```{r}
+# Best practice is to clear everything from your working environment at the beginning of your code
+rm(list = ls())
+
+# load libraries
+library(sf)
+library(tidyverse)
+library(spData)
+library(tmap)
+```
+
+```{r}
+# 0.1 longitude, 51.5 latitude
+london_point <- st_point(c(0.1, 51.5))
+
+# crs = coordinate reference system
+london_geom <- st_sfc(london_point, crs = 4326)
+
+london_attributes <- data.frame(
+  name = "London",
+  temperature = 25,
+  date = as.Date("2017-06-21")
+)
+
+london_sf <- st_sf(london_attributes, geometry = london_geom)
+
+class(london_sf)
+
+st_crs(london_sf)$IsGeographic
+```
+
+```{r}
+world <- spData::world
+
+names(world)
+
+summary(world$lifeExp)
+```
+
+```{r}
+world_df <- world %>% 
+  select(-geom)
+
+world_df <- world %>% 
+  select(continent)
+
+colnames(world_df)
+```
+
+```{r}
+world_df <- st_drop_geometry(world)
+
+class(world_df)
+```
+
+## Reprojecting Data
+
+```{r}
+london_proj <- data.frame(x = 53000, y = 180000) %>% 
+  st_as_sf(coords = c("x", "y"), crs = "EPSG:27700")
+
+# checking that both datsets are in the same crs
+st_crs(london_proj) == st_crs(london_sf)
+
+# transforming one object to have the same crs as another object
+london_st_transform <- st_transform(london_sf, crs = st_crs(london_proj))
+```
+
+```{r}
+if(st_crs(london_st_transform) == st_crs(london_proj)) {
+  print("coordinate reference systems of datasets match")
+} else {
+  error("coordinate reference systems do not match")
+}
+```
+
+```{r}
+tm_shape(world, projection = 8857) +
+  tm_fill(col = "area_km2")
+```
+
+```{r}
+tm_shape(world, projection = 3395) +
+  tm_fill(col = "area_km2")
+```
+
+## Vector Attribute Subsetting
+
+```{r}
+# dplyr select
+world %>% 
+  select(name_long, pop)
+
+world %>% 
+  select(-subregion)
+
+world %>% 
+  select(name = name_long, population = pop)
+```
+
+```{r}
+# dplyr filter
+world1 <- world %>% 
+  filter(area_km2 < 10000)
+
+world %>% 
+  filter(continent == "Asia") %>% 
+  select(name_long, continent, lifeExp) %>% 
+  slice_max(lifeExp) %>% # will pick the row with the highest value
+  st_drop_geometry()
+```
+
+```{r}
+pop_by_continent <- world %>% 
+  group_by(continent) %>% 
+  summarize(population = sum(pop, na.rm = TRUE)) %>% 
+  st_drop_geometry()
+```
+
+# Joins with vector attributes
+
+```{r}
+coffee_data <- spData::coffee_data
+
+nrow(coffee_data)
+nrow(world)
+```
+
+```{r}
+world_coffee <- left_join(world, coffee_data, by = "name_long")
+```
+
+
+```{r}
+tm_shape(world_coffee) +
+  tm_fill(col = "coffee_production_2017")
+```
+
+```{r}
+# inner join, will only keep rows that have matches between both datasets
+world_coffee_inner <- inner_join(world, coffee_data, by = "name_long")
+
+if(nrow(world_coffee_inner) < nrow(coffee_data)) {
+  warning("Inner join does not match original data. Potential data loss during join.")
+}
+```
+
+```{r}
+setdiff(coffee_data$name_long, world$name_long)
+```
+
+```{r}
+drc <- stringr::str_subset(world$name_long, "Dem*.+Congo")
+
+coffee_data$name_long[stringr::str_detect(coffee_data$name_long, "Congo")] <- drc
+
+world_coffee_inner <- inner_join(world, coffee_data, by = "name_long")
+
+if(nrow(world_coffee_inner) < nrow(coffee_data)) {
+  warning("Inner join does not match original data. Potential data loss during join.")
+}
+```
+
+```{r}
+tm_shape(world_coffee_inner) +
+  tm_polygons(col = "coffee_production_2017",
+              title = "Coffee Production (2017)") +
+  tm_layout(legend.outside = TRUE)
+```
+
+```{r}
+coffee_world <- left_join(coffee_data, world, by = "name_long")
+class(coffee_world)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,87 @@
+---
+title: "Week 2 Discussion Section"
+author: "Rachel Swick"
+format: html
+editor: visual
+---
+
+```{r}
+# load packages
+library(here)
+library(tidyverse)
+library(sf)
+library(tmap)
+```
+
+```{r}
+# read in Columbia ecoregions
+ecoregions <- st_read(here("data", "Colombia", "Colombia.shp"))
+```
+
+```{r}
+# read in Columbia roads
+roads <- st_read(here("data", "RDLINE_colombia", "RDLINE_colombia.shp"))
+```
+
+```{r}
+# read in Columbia bird observations
+birds <- read_csv(here("data", "dataves.csv"))
+```
+
+```{r}
+# create a tibble for the birds data
+birds_tibble <- birds %>% 
+  as_tibble() %>% 
+  rename(long = decimal_longitude,
+         lat = decimal_latitude) %>% 
+  st_as_sf(coords = c("long", "lat"), crs = 4326)
+```
+
+```{r}
+unique(st_geometry_type(birds_tibble))
+```
+
+```{r}
+andean <- ecoregions %>% 
+  mutate(N1_MacroBi = as.factor(N1_MacroBi)) %>% 
+  filter(N1_MacroBi == "Andean")
+```
+
+```{r}
+# checking the file's coordinate reference system (CRS)
+st_crs(ecoregions)
+```
+
+```{r}
+# checking the units of your geometery
+st_crs(ecoregions)$units
+```
+
+```{r}
+st_crs(ecoregions) == st_crs(birds_tibble)
+```
+
+```{r}
+# set the CRS for birds_tibble to be the same as the CRS of ecoregions in a reproducible way
+birds_tibble <- st_transform(birds_tibble, crs = st_crs(ecoregions))
+```
+
+```{r}
+st_crs(ecoregions) == st_crs(birds_tibble)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
